@@ -1,6 +1,10 @@
 /*#include <avr/io.h>
 #include <avr/interrupt.h>*/
 
+/*rayons :
+ * 0.000080 - 13m
+ */
+
 #include <TinyGPS++.h>
 #include <SoftwareSerial.h>
 #include <Audio.h>
@@ -9,10 +13,11 @@
 #include <SD.h>
 #include <SerialFlash.h>
 #include <LinkedList.h>
+#include <math.h>
 
 
 //Useful flags
-#define LOG 0
+#define LOG 1
 
 
 //Define Audio Shield
@@ -40,11 +45,21 @@ SoftwareSerial gpsSerial(RXPin, TXPin);
 float latitude = 0, longitude = 0;
 
 //Audio objects
-AudioPlaySdWav           playSdWav1;
-AudioOutputI2S           i2s1;
-AudioConnection          patchCord1(playSdWav1, 0, i2s1, 0);
-AudioConnection          patchCord2(playSdWav1, 1, i2s1, 1);
-AudioControlSGTL5000     sgtl5000_1;
+// GUItool: begin automatically generated code
+AudioPlaySdWav           playSdWav2;     //xy=471,454
+AudioPlaySdWav           playSdWav1;     //xy=473,361
+AudioMixer4              mixer1;         //xy=775,340
+AudioMixer4              mixer2;         //xy=776,466
+AudioOutputI2S           i2s2;           //xy=959,394
+AudioConnection          patchCord1(playSdWav2, 0, mixer1, 1);
+AudioConnection          patchCord2(playSdWav2, 1, mixer2, 1);
+AudioConnection          patchCord3(playSdWav1, 0, mixer1, 0);
+AudioConnection          patchCord4(playSdWav1, 1, mixer2, 0);
+AudioConnection          patchCord5(mixer1, 0, i2s2, 0);
+AudioConnection          patchCord6(mixer2, 0, i2s2, 1);
+AudioControlSGTL5000     sgtl5000_1;     //xy=560,644
+// GUItool: end automatically generated code
+
 
 
 
@@ -60,8 +75,10 @@ class Point {
     float x2;
     float y1;
     float y2;
+    float rayon;
     
-    Point(float y, float x, int rayon) {
+    Point(float y, float x, float rayon) {
+      this->rayon = rayon;
       this->x = x;
       this->y = y;
       this->x1 = x-rayon;
@@ -70,9 +87,9 @@ class Point {
       this->y2 = y+rayon;
     }
 
-    String getCoord() {
-      return(String(this->x)+String(this->y));
-    }
+    /*float getCoord() {
+      return(this->x, this->y);
+    }*/
 };
 
 
@@ -153,10 +170,22 @@ void loop()
 
 
     if(listePoints.size()>0){
-      if(latitude>listePoints.get(0)->y1 && latitude<listePoints.get(0)->y2 && longitude>listePoints.get(0)->x1 && longitude<listePoints.get(0)->x2){
+      
+      Point *actualPoint;
+
+      //début boucle for
+      
+      actualPoint = listePoints.get(0);
+      
+      //if(latitude>listePoints.get(0)->y1 && latitude<listePoints.get(0)->y2 && longitude>listePoints.get(0)->x1 && longitude<listePoints.get(0)->x2){
+      if(distanceToPoint(actualPoint) < actualPoint->rayon){
         if (playSdWav1.isPlaying() == false) {
           Serial.println("Start playing");
+          
           playSdWav1.play("HELLO.WAV");
+          delay(10); // wait for library to parse WAV info
+
+          playSdWav2.play("ENTREEZONE.WAV");
           delay(10); // wait for library to parse WAV info
         }
       }
@@ -164,26 +193,12 @@ void loop()
         if (playSdWav1.isPlaying() == true){
           Serial.println("Stop playing");
           playSdWav1.stop();
+
+          playSdWav2.play("SORTIEZONE.WAV");
+          delay(10); // wait for library to parse WAV info
         }
       }
-    }
-    
-
-    
-
-    /*if(gps.location.lat()>48.118802 && gps.location.lat()<48.118879 && gps.location.lng()>-1.703010 && gps.location.lng()<-1.702907){
-      if (playSdWav1.isPlaying() == false) {
-        Serial.println("Start playing");
-        playSdWav1.play("BYE.WAV");
-        delay(10); // wait for library to parse WAV info
-      }
-    }
-    else{
-      if (playSdWav1.isPlaying() == true){
-        Serial.println("Stop playing");
-        playSdWav1.stop();
-      }
-    }*/
+    }    
 
         
   }
@@ -197,6 +212,11 @@ void loop()
   }
 }
 
+
+
+float distanceToPoint(Point p){
+  return(sqrt(square(p->x - longitude) + square(p->y - latitude)));
+}
 
 
 
@@ -254,7 +274,7 @@ void newZone(){
   if (gps.location.isValid()){
 
     //Add a new point
-    Point *point1 = new Point(latitude, longitude, 0.000080);
+    Point *point1 = new Point(latitude, longitude, 0.000030);
     listePoints.add(point1);
 
     //Point successful added
@@ -262,8 +282,8 @@ void newZone(){
     delay(10); // wait for library to parse WAV info
     Serial.println("Point posé");
 
-    //Shows theadded coordinates
-    //Serial.println((listePoints.get(listePoints.size()-1).getCoord));
+    //Shows the added coordinates
+    Serial.println(listePoints.get(listePoints.size()-1)->x1);
   }
   else{
     //Failed to add the point
