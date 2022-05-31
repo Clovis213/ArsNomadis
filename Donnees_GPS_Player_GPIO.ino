@@ -75,20 +75,22 @@ class Point {
     float y1;
     float y2;
     float rayon;
-    
+
+    /*
+     * rayon in meters
+     * y = latitude
+     * x = longitude
+     */
     Point(float y, float x, float rayon) {
       this->rayon = rayon;
       this->x = x;
       this->y = y;
-      this->x1 = x-rayon;
-      this->x2 = x+rayon;
-      this->y1 = y-rayon;
-      this->y2 = y+rayon;
+      this->x1 = x-(rayon/(111111*cos(y)));
+      this->x2 = x+(rayon/(111111*cos(y)));
+      this->y1 = y-(rayon/111111);
+      this->y2 = y+(rayon/111111);
     }
 
-    /*float getCoord() {
-      return(this->x, this->y);
-    }*/
 };
 
 
@@ -212,9 +214,18 @@ void loop()
 }
 
 
-
+/*
+ * returns value in meters
+ */
 float distanceToPoint(Point* p){
-  return(sqrt(sq(p->x - longitude) + sq(p->y - latitude)));
+  //111 111 m in the y direction = 1° of latitude
+  //111,111 * cos(latitude) m in the x direction = 1° of longitude
+
+  //conversion to meters
+  float distx = (longitude - p->x)*111111;
+  float disty = (latitude - p->y)*111111*cos(p->y);
+  
+  return(sqrt(sq(distx) + sq(disty)));
 }
 
 
@@ -273,7 +284,7 @@ void newZone(){
   if (gps.location.isValid()){
 
     //Add a new point
-    Point *point1 = new Point(latitude, longitude, 0.000030);
+    Point *point1 = new Point(latitude, longitude, 10);
     listePoints.add(point1);
 
     //Point successful added
