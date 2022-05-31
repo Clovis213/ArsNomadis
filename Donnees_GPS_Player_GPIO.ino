@@ -171,11 +171,9 @@ void loop()
 
 
     if(listePoints.size()>0){
-      
       Point *actualPoint;
 
       for(int i=0; i<listePoints.size(); i++){
-        
         actualPoint = listePoints.get(1);
 
         /*square*/
@@ -202,10 +200,7 @@ void loop()
           }
         }
       }
-      
     }    
-
-        
   }
   
   // If 5000 milliseconds pass and there are no characters coming in
@@ -306,8 +301,6 @@ void newZone(){
     playSdWav1.play("SYGSONVOL.WAV");
     delay(10); // wait for library to parse WAV info
   }
-
-  
 }
 
 
@@ -386,5 +379,4 @@ void displayInfo()
     Serial.println();
     delay(10);
   }
-  
 }
