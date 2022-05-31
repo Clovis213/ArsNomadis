@@ -13,7 +13,6 @@
 #include <SD.h>
 #include <SerialFlash.h>
 #include <LinkedList.h>
-#include <math.h>
 
 
 //Useful flags
@@ -214,8 +213,8 @@ void loop()
 
 
 
-float distanceToPoint(Point p){
-  return(sqrt(square(p->x - longitude) + square(p->y - latitude)));
+float distanceToPoint(Point* p){
+  return(sqrt(sq(p->x - longitude) + sq(p->y - latitude)));
 }
 
 
