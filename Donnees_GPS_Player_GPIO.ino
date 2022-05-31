@@ -174,31 +174,35 @@ void loop()
       
       Point *actualPoint;
 
-      //début boucle for
-      
-      actualPoint = listePoints.get(0);
-      
-      //if(latitude>listePoints.get(0)->y1 && latitude<listePoints.get(0)->y2 && longitude>listePoints.get(0)->x1 && longitude<listePoints.get(0)->x2){
-      if(distanceToPoint(actualPoint) < actualPoint->rayon){
-        if (playSdWav1.isPlaying() == false) {
-          Serial.println("Start playing");
-          
-          playSdWav1.play("HELLO.WAV");
-          delay(10); // wait for library to parse WAV info
+      for(int i=0; i<listePoints.size(); i++){
+        
+        actualPoint = listePoints.get(1);
 
-          playSdWav2.play("ENTREEZONE.WAV");
-          delay(10); // wait for library to parse WAV info
+        /*square*/
+        //if(latitude>actualPoint->y1 && latitude<actualPoint->y2 && longitude>actualPoint->x1 && longitude<actualPoint->x2){
+        /*circle*/
+        if(distanceToPoint(actualPoint) < actualPoint->rayon){
+          if (playSdWav1.isPlaying() == false) {
+            Serial.println("Start playing");
+            
+            playSdWav1.play("HELLO.WAV");
+            delay(10); // wait for library to parse WAV info
+  
+            playSdWav2.play("ENTREEZONE.WAV");
+            delay(10); // wait for library to parse WAV info
+          }
+        }
+        else{
+          if (playSdWav1.isPlaying() == true){
+            Serial.println("Stop playing");
+            playSdWav1.stop();
+  
+            playSdWav2.play("SORTIEZONE.WAV");
+            delay(10); // wait for library to parse WAV info
+          }
         }
       }
-      else{
-        if (playSdWav1.isPlaying() == true){
-          Serial.println("Stop playing");
-          playSdWav1.stop();
-
-          playSdWav2.play("SORTIEZONE.WAV");
-          delay(10); // wait for library to parse WAV info
-        }
-      }
+      
     }    
 
         
