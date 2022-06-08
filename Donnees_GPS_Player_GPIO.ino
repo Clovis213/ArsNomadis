@@ -15,7 +15,7 @@
 #include <LinkedList.h>
 
 
-//Useful flags
+//Useful l
 #define LOG 1
 
 
@@ -26,10 +26,9 @@
 float vol = 0.3;
 
 //Define GPIO
-#define BTN_1 2
-#define BTN_2 3
-#define BTN_3 4
-bool btnPressed = false;
+#define BTN_1 22
+#define BTN_2 17
+#define BTN_3 16
 unsigned long lastPress = 0;
 
 // Communication GPS
@@ -47,17 +46,24 @@ float latitude = 0, longitude = 0;
 // GUItool: begin automatically generated code
 AudioPlaySdWav           playSdWav2;     //xy=471,454
 AudioPlaySdWav           playSdWav1;     //xy=473,361
-AudioMixer4              mixer1;         //xy=775,340
-AudioMixer4              mixer2;         //xy=776,466
-AudioOutputI2S           i2s2;           //xy=959,394
+AudioPlaySdWav           playSdWav4; //xy=475,638
+AudioPlaySdWav           playSdWav3; //xy=479,541
+AudioMixer4              mixer1;         //xy=790,417
+AudioMixer4              mixer2;         //xy=795,542
+AudioOutputI2S           i2s2;           //xy=1245,505
 AudioConnection          patchCord1(playSdWav2, 0, mixer1, 1);
 AudioConnection          patchCord2(playSdWav2, 1, mixer2, 1);
 AudioConnection          patchCord3(playSdWav1, 0, mixer1, 0);
 AudioConnection          patchCord4(playSdWav1, 1, mixer2, 0);
-AudioConnection          patchCord5(mixer1, 0, i2s2, 0);
-AudioConnection          patchCord6(mixer2, 0, i2s2, 1);
-AudioControlSGTL5000     sgtl5000_1;     //xy=560,644
+AudioConnection          patchCord5(playSdWav4, 0, mixer1, 3);
+AudioConnection          patchCord6(playSdWav4, 1, mixer2, 3);
+AudioConnection          patchCord7(playSdWav3, 0, mixer1, 2);
+AudioConnection          patchCord8(playSdWav3, 1, mixer2, 2);
+AudioConnection          patchCord9(mixer1, 0, i2s2, 0);
+AudioConnection          patchCord10(mixer2, 0, i2s2, 1);
+AudioControlSGTL5000     sgtl5000_1;     //xy=651,1204
 // GUItool: end automatically generated code
+
 
 
 
@@ -85,7 +91,7 @@ class Point {
       this->rayon = rayon;
       this->x = x;
       this->y = y;
-      this->x1 = x-(rayon/(111111*cos(y)));
+      this->x1 = x-(rayon/(111111*cos(y))); //!! radians
       this->x2 = x+(rayon/(111111*cos(y)));
       this->y1 = y-(rayon/111111);
       this->y2 = y+(rayon/111111);
@@ -103,18 +109,20 @@ LinkedList<Point*> listePoints = LinkedList<Point*>();
 //Pin interruption
 void myInterrupt() {
 
+    noInterrupts();
     if(LOG){
       Serial.print("System interrupted ");
       Serial.println(millis());
     }
     
     //Button press check
-    if(millis()-lastPress>300){
+    //if(millis()-lastPress>300){
       lastPress = millis();
 
       verifBouton();
-      btnPressed=false;
-    }
+    //}
+
+    interrupts();
 }
 
 
@@ -145,14 +153,14 @@ void setup()
   gpsSerial.begin(GPSBaud);
 
   //Init GPIO
-  pinMode(BTN_1, INPUT_PULLDOWN);
-  pinMode(BTN_2, INPUT_PULLDOWN);
-  pinMode(BTN_3, INPUT_PULLDOWN);
+  pinMode(BTN_1, INPUT_PULLUP);
+  pinMode(BTN_2, INPUT_PULLUP);
+  pinMode(BTN_3, INPUT_PULLUP);
 
   //Init interruption
-  attachInterrupt(digitalPinToInterrupt(BTN_1), myInterrupt, RISING);
-  attachInterrupt(digitalPinToInterrupt(BTN_2), myInterrupt, RISING);
-  attachInterrupt(digitalPinToInterrupt(BTN_3), myInterrupt, RISING);
+  attachInterrupt(digitalPinToInterrupt(BTN_1), myInterrupt, FALLING);
+  attachInterrupt(digitalPinToInterrupt(BTN_2), myInterrupt, FALLING);
+  attachInterrupt(digitalPinToInterrupt(BTN_3), myInterrupt, FALLING);
 }
 
 
@@ -173,7 +181,8 @@ void loop()
     if(listePoints.size()>0){
       Point *actualPoint;
 
-      for(int i=0; i<listePoints.size(); i++){
+     int i = 0;
+      //for(int i=0; i<listePoints.size(); i++){
         actualPoint = listePoints.get(1);
 
         /*square*/
@@ -199,7 +208,7 @@ void loop()
             delay(10); // wait for library to parse WAV info
           }
         }
-      }
+      //}
     }    
   }
   
@@ -222,7 +231,7 @@ float distanceToPoint(Point* p){
 
   //conversion to meters
   float distx = (longitude - p->x)*111111;
-  float disty = (latitude - p->y)*111111*cos(p->y);
+  float disty = (latitude - p->y)*111111*cos(p->y); //!! radians
   
   return(sqrt(sq(distx) + sq(disty)));
 }
@@ -230,12 +239,13 @@ float distanceToPoint(Point* p){
 
 
 void verifBouton(){
+  
   if(LOG){
     Serial.println("checking buttons...");
   }
   
   //Bouton principal
-  if(digitalRead(BTN_1)==HIGH){
+  if(digitalRead(BTN_1)==LOW){
         
     playSdWav1.play("SYGSONPLACE.WAV");
     delay(10); // wait for library to parse WAV info
@@ -244,7 +254,7 @@ void verifBouton(){
     
   }
   //Volume +
-  else if(digitalRead(BTN_3)==HIGH){
+  else if(digitalRead(BTN_3)==LOW){
     playSdWav1.play("SYGSONVOL.WAV");
     delay(10); // wait for library to parse WAV info
     if(vol<1.00){
@@ -256,7 +266,7 @@ void verifBouton(){
     }
   }
   //Volume -
-  else if(digitalRead(BTN_2)==HIGH){
+  else if(digitalRead(BTN_2)==LOW){
     
     playSdWav1.play("SYGSONVOL.WAV");
     delay(10); // wait for library to parse WAV info
