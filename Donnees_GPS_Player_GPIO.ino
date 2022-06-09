@@ -15,8 +15,9 @@
 #include <LinkedList.h>
 
 
-//Useful l
+//Useful flags
 #define LOG 1
+#define LOGGPS 0
 
 
 //Define Audio Shield
@@ -30,6 +31,8 @@ float vol = 0.3;
 #define BTN_2 17
 #define BTN_3 16
 unsigned long lastPress = 0;
+bool pressedBtns[3];
+bool btnAction = false;
 
 // Communication GPS
 int RXPin = 0;
@@ -45,20 +48,20 @@ float latitude = 0, longitude = 0;
 //Audio objects
 // GUItool: begin automatically generated code
 AudioPlaySdWav           playSdWav2;     //xy=471,454
-AudioPlaySdWav           playSdWav1;     //xy=473,361
-AudioPlaySdWav           playSdWav4; //xy=475,638
-AudioPlaySdWav           playSdWav3; //xy=479,541
+AudioPlaySdWav           playSdWav4; //xy=472,662
+AudioPlaySdWav           playSdWav3; //xy=474,550
+AudioPlaySdWav           playSdWav1;     //xy=476,350
 AudioMixer4              mixer1;         //xy=790,417
 AudioMixer4              mixer2;         //xy=795,542
-AudioOutputI2S           i2s2;           //xy=1245,505
+AudioOutputI2S           i2s2;           //xy=1211,513
 AudioConnection          patchCord1(playSdWav2, 0, mixer1, 1);
 AudioConnection          patchCord2(playSdWav2, 1, mixer2, 1);
-AudioConnection          patchCord3(playSdWav1, 0, mixer1, 0);
-AudioConnection          patchCord4(playSdWav1, 1, mixer2, 0);
-AudioConnection          patchCord5(playSdWav4, 0, mixer1, 3);
-AudioConnection          patchCord6(playSdWav4, 1, mixer2, 3);
-AudioConnection          patchCord7(playSdWav3, 0, mixer1, 2);
-AudioConnection          patchCord8(playSdWav3, 1, mixer2, 2);
+AudioConnection          patchCord3(playSdWav4, 0, mixer1, 3);
+AudioConnection          patchCord4(playSdWav4, 1, mixer2, 3);
+AudioConnection          patchCord5(playSdWav3, 0, mixer1, 2);
+AudioConnection          patchCord6(playSdWav3, 1, mixer2, 2);
+AudioConnection          patchCord7(playSdWav1, 0, mixer1, 0);
+AudioConnection          patchCord8(playSdWav1, 1, mixer2, 0);
 AudioConnection          patchCord9(mixer1, 0, i2s2, 0);
 AudioConnection          patchCord10(mixer2, 0, i2s2, 1);
 AudioControlSGTL5000     sgtl5000_1;     //xy=651,1204
@@ -76,25 +79,27 @@ class Point {
   public:
     float x;
     float y;
-    float x1;
+    /*float x1;
     float x2;
     float y1;
-    float y2;
+    float y2;*/
     float rayon;
+    const char* filename;
 
     /*
      * rayon in meters
      * y = latitude
      * x = longitude
      */
-    Point(float y, float x, float rayon) {
+    Point(float y, float x, float rayon, const char* filename) {
       this->rayon = rayon;
       this->x = x;
       this->y = y;
-      this->x1 = x-(rayon/(111111*cos(y))); //!! radians
+      this->filename = filename;
+      /*this->x1 = x-(rayon/(111111*cos(y))); //!! radians
       this->x2 = x+(rayon/(111111*cos(y)));
       this->y1 = y-(rayon/111111);
-      this->y2 = y+(rayon/111111);
+      this->y2 = y+(rayon/111111);*/
     }
 
 };
@@ -108,21 +113,32 @@ LinkedList<Point*> listePoints = LinkedList<Point*>();
 
 //Pin interruption
 void myInterrupt() {
-
-    noInterrupts();
+    
     if(LOG){
       Serial.print("System interrupted ");
       Serial.println(millis());
     }
-    
+
     //Button press check
-    //if(millis()-lastPress>300){
+    if((digitalRead(BTN_1)||digitalRead(BTN_2)||digitalRead(BTN_3)) && millis()-lastPress>100){
+      pressedBtns[0] = digitalRead(BTN_1);
+      pressedBtns[1] = digitalRead(BTN_2);
+      pressedBtns[2] = digitalRead(BTN_3);
+      
       lastPress = millis();
-
+      
       verifBouton();
-    //}
 
-    interrupts();
+      if(LOG){
+        Serial.print("Bouton1 = ");
+        Serial.println(pressedBtns[0]);
+        Serial.print("Bouton2 = ");
+        Serial.println(pressedBtns[1]);
+        Serial.print("Bouton3 = ");
+        Serial.println(pressedBtns[2]);
+        Serial.println();
+      }
+    }
 }
 
 
@@ -153,14 +169,14 @@ void setup()
   gpsSerial.begin(GPSBaud);
 
   //Init GPIO
-  pinMode(BTN_1, INPUT_PULLUP);
-  pinMode(BTN_2, INPUT_PULLUP);
-  pinMode(BTN_3, INPUT_PULLUP);
+  pinMode(BTN_1, INPUT_PULLDOWN);
+  pinMode(BTN_2, INPUT_PULLDOWN);
+  pinMode(BTN_3, INPUT_PULLDOWN);
 
   //Init interruption
-  attachInterrupt(digitalPinToInterrupt(BTN_1), myInterrupt, FALLING);
-  attachInterrupt(digitalPinToInterrupt(BTN_2), myInterrupt, FALLING);
-  attachInterrupt(digitalPinToInterrupt(BTN_3), myInterrupt, FALLING);
+  attachInterrupt(digitalPinToInterrupt(BTN_1), myInterrupt, RISING);
+  attachInterrupt(digitalPinToInterrupt(BTN_2), myInterrupt, RISING);
+  attachInterrupt(digitalPinToInterrupt(BTN_3), myInterrupt, RISING);
 }
 
 
@@ -177,39 +193,18 @@ void loop()
     //Ars Nomadis Latitude : 48.107255 Longitude: -1.652680
     //FabLab Latitude: 48.118805 Longitude: -1.702768
 
+    //Checking zones
+    checkPosition();
 
-    if(listePoints.size()>0){
-      Point *actualPoint;
+    //Checking if main button pressed
+    if(btnAction){
+      newZone();
 
-     int i = 0;
-      //for(int i=0; i<listePoints.size(); i++){
-        actualPoint = listePoints.get(1);
+      btnAction = false;
+    }
 
-        /*square*/
-        //if(latitude>actualPoint->y1 && latitude<actualPoint->y2 && longitude>actualPoint->x1 && longitude<actualPoint->x2){
-        /*circle*/
-        if(distanceToPoint(actualPoint) < actualPoint->rayon){
-          if (playSdWav1.isPlaying() == false) {
-            Serial.println("Start playing");
-            
-            playSdWav1.play("HELLO.WAV");
-            delay(10); // wait for library to parse WAV info
-  
-            playSdWav2.play("ENTREEZONE.WAV");
-            delay(10); // wait for library to parse WAV info
-          }
-        }
-        else{
-          if (playSdWav1.isPlaying() == true){
-            Serial.println("Stop playing");
-            playSdWav1.stop();
-  
-            playSdWav2.play("SORTIEZONE.WAV");
-            delay(10); // wait for library to parse WAV info
-          }
-        }
-      //}
-    }    
+
+    
   }
   
   // If 5000 milliseconds pass and there are no characters coming in
@@ -222,53 +217,23 @@ void loop()
 }
 
 
-/*
- * returns value in meters
- */
-float distanceToPoint(Point* p){
-  //111 111 m in the y direction = 1° of latitude
-  //111,111 * cos(latitude) m in the x direction = 1° of longitude
 
-  //conversion to meters
-  float distx = (longitude - p->x)*111111;
-  float disty = (latitude - p->y)*111111*cos(p->y); //!! radians
-  
-  return(sqrt(sq(distx) + sq(disty)));
-}
-
-
-
-void verifBouton(){
+void verifBouton(void){
   
   if(LOG){
     Serial.println("checking buttons...");
   }
   
   //Bouton principal
-  if(digitalRead(BTN_1)==LOW){
-        
-    playSdWav1.play("SYGSONPLACE.WAV");
-    delay(10); // wait for library to parse WAV info
+  if(pressedBtns[0]==HIGH){
 
-    newZone();
-    
+    btnAction = true;
   }
-  //Volume +
-  else if(digitalRead(BTN_3)==LOW){
-    playSdWav1.play("SYGSONVOL.WAV");
-    delay(10); // wait for library to parse WAV info
-    if(vol<1.00){
-      vol += 0.1;
-      sgtl5000_1.volume(vol);
 
-      Serial.print("Volume : ");
-      Serial.println(int(vol*100));
-    }
-  }
   //Volume -
-  else if(digitalRead(BTN_2)==LOW){
+  else if(pressedBtns[1]==HIGH){
     
-    playSdWav1.play("SYGSONVOL.WAV");
+    playSdWav4.play("SYGSONVOL.WAV");
     delay(10); // wait for library to parse WAV info
     if(vol>=0.1){
       vol -= 0.1;
@@ -278,50 +243,119 @@ void verifBouton(){
       Serial.println(int(vol*100));
     }
   }
+  
+  //Volume +
+  else if(pressedBtns[2]==HIGH){
+    playSdWav4.play("SYGSONVOL.WAV");
+    delay(10); // wait for library to parse WAV info
+    if(vol<=0.9){
+      vol += 0.1;
+      sgtl5000_1.volume(vol);
+
+      Serial.print("Volume : ");
+      Serial.println(int(vol*100));
+    }
+  }
+  
+  else{
+    Serial.println("Aucun bouton détecté");
+  }
 }
 
 
 
-void newZone(){
-  playSdWav1.play("SYGSONVOL.WAV");
-  delay(10); // wait for library to parse WAV info
-  playSdWav1.play("SYGSONVOL.WAV");
-  delay(10); // wait for library to parse WAV info
+void newZone(void){
   Serial.println("Traitement...");
   
-    
   if (gps.location.isValid()){
 
     //Add a new point
-    Point *point1 = new Point(latitude, longitude, 10);
+    Point *point1 = new Point(latitude, longitude, 10, "HELLO.WAV");
     listePoints.add(point1);
 
     //Point successful added
-    playSdWav1.play("SYGSONPLACE.WAV");
+    playSdWav4.play("SYGSONPLACE.WAV");
     delay(10); // wait for library to parse WAV info
     Serial.println("Point posé");
 
     //Shows the added coordinates
-    Serial.println(listePoints.get(listePoints.size()-1)->x1);
+    Serial.print("x = ");
+    Serial.print(listePoints.get(listePoints.size()-1)->x);
+    Serial.print(", y = ");
+    Serial.println(listePoints.get(listePoints.size()-1)->y);
   }
   else{
     //Failed to add the point
-    Serial.println("Hors de portée GPS");
-
-    playSdWav1.play("SYGSONVOL.WAV");
+    playSdWav4.play("SYGSONVOL.WAV");
     delay(10); // wait for library to parse WAV info
+    Serial.println("Hors de portée GPS");
   }
 }
 
 
-void displayInfo()
+
+void checkPosition(void){
+  if(listePoints.size()>0){
+    Point *actualPoint;
+
+    //int i = 0;
+    //for(int i=0; i<listePoints.size(); i++){
+      actualPoint = listePoints.get(listePoints.size()-1);
+    
+      /*square*/
+      //if(latitude>actualPoint->y1 && latitude<actualPoint->y2 && longitude>actualPoint->x1 && longitude<actualPoint->x2){
+      /*circle*/
+      if(distanceToPoint(actualPoint) < actualPoint->rayon){
+        if (playSdWav1.isPlaying() == false) {
+          Serial.println("Start playing");
+
+          const char* joue = actualPoint->filename;
+          playSdWav1.play(joue);
+          delay(10); // wait for library to parse WAV info
+    
+          playSdWav3.play("ENTREEZONE.WAV");
+          delay(10); // wait for library to parse WAV info
+        }
+      }
+      else{
+        if (playSdWav1.isPlaying() == true){
+          Serial.println("Stop playing");
+          playSdWav1.stop();
+    
+          playSdWav3.play("SORTIEZONE.WAV");
+          delay(10); // wait for library to parse WAV info
+        }
+      }
+    //}
+    }    
+}
+
+
+
+/*
+ * returns value in meters
+ */
+float distanceToPoint(Point* p){
+  //111 111 m in the y direction = 1° of latitude
+  //111,111 * cos(latitude) m in the x direction = 1° of longitude
+
+  //conversion to meters
+  float disty = (latitude - p->y)*111111;
+  float distx = (longitude - p->x)*111111*cos((p->y*6.28)/360); //!! radians
+  
+  return(sqrt(sq(distx) + sq(disty)));
+}
+
+
+
+void displayInfo(void)
 {
   if (gps.location.isValid())
   {
     latitude = gps.location.lat();
     longitude = gps.location.lng();
     
-    if(LOG){
+    if(LOGGPS){
       Serial.print("Latitude: ");
       Serial.println(gps.location.lat(), 6);
       
@@ -332,15 +366,15 @@ void displayInfo()
       Serial.println(gps.altitude.meters());
     }
   }
-  else if(LOG)
+  else if(LOGGPS)
   {
     Serial.println("Location: Not Available");
   }
 
 
-  if(LOG){
+  if(LOGGPS){
     Serial.print("Date: ");
-    if (gps.date.isValid() && LOG)
+    if (gps.date.isValid())
     {
       Serial.print(gps.date.day());
       Serial.print("/");
