@@ -16,8 +16,8 @@
 
 
 //Useful flags
-#define LOG 0
-#define LOGGPS 0
+#define LOG 1 µ
+#define LOGGPS 1
 
 
 //Define Audio Shield
@@ -126,7 +126,7 @@ void myInterrupt() {
     }
 
     //Button press check
-    if((digitalRead(BTN_1)||digitalRead(BTN_2)||digitalRead(BTN_3)) && millis()-lastPress>100){
+    if((digitalRead(BTN_1)||digitalRead(BTN_2)||digitalRead(BTN_3)) && millis()-lastPress>300){
       pressedBtns[0] = digitalRead(BTN_1);
       pressedBtns[1] = digitalRead(BTN_2);
       pressedBtns[2] = digitalRead(BTN_3);
@@ -169,6 +169,10 @@ void setup()
       delay(500);
     }
   }
+  mixer1.gain(0, 0.5);
+  mixer1.gain(1, 0.5);
+  mixer2.gain(0, 0.5);
+  mixer2.gain(1, 0.5);
   delay(1000);
 
   //Init communication GPS
