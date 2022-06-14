@@ -16,7 +16,7 @@
 
 
 //Useful flags
-#define LOG 1
+#define LOG 0
 #define LOGGPS 0
 
 
@@ -24,7 +24,8 @@
 #define SDCARD_CS_PIN    10
 #define SDCARD_MOSI_PIN  7
 #define SDCARD_SCK_PIN   14
-float vol = 0.3;
+float vol = 0.4;
+int playingPoint = -1, playingLoop = -1;
 
 //Define GPIO
 #define BTN_1 22
@@ -47,23 +48,31 @@ float latitude = 0, longitude = 0;
 
 //Audio objects
 // GUItool: begin automatically generated code
-AudioPlaySdWav           playSdWav2;     //xy=471,454
-AudioPlaySdWav           playSdWav4; //xy=472,662
-AudioPlaySdWav           playSdWav3; //xy=474,550
-AudioPlaySdWav           playSdWav1;     //xy=476,350
+AudioPlaySdWav           playSdWav1;     //xy=148,286
+AudioPlaySdWav           playSdWav4; //xy=150,736
+AudioPlaySdWav           playSdWav2;     //xy=158,416
+AudioPlaySdWav           playSdWav3; //xy=159,618
+AudioEffectFade          fade3;          //xy=346,399
+AudioEffectFade          fade4;          //xy=346,451
+AudioEffectFade          fade2;          //xy=352,327
+AudioEffectFade          fade1;          //xy=353,246
 AudioMixer4              mixer1;         //xy=790,417
 AudioMixer4              mixer2;         //xy=795,542
 AudioOutputI2S           i2s2;           //xy=1211,513
-AudioConnection          patchCord1(playSdWav2, 0, mixer1, 1);
-AudioConnection          patchCord2(playSdWav2, 1, mixer2, 1);
+AudioConnection          patchCord1(playSdWav1, 0, fade1, 0);
+AudioConnection          patchCord2(playSdWav1, 1, fade2, 0);
 AudioConnection          patchCord3(playSdWav4, 0, mixer1, 3);
 AudioConnection          patchCord4(playSdWav4, 1, mixer2, 3);
-AudioConnection          patchCord5(playSdWav3, 0, mixer1, 2);
-AudioConnection          patchCord6(playSdWav3, 1, mixer2, 2);
-AudioConnection          patchCord7(playSdWav1, 0, mixer1, 0);
-AudioConnection          patchCord8(playSdWav1, 1, mixer2, 0);
-AudioConnection          patchCord9(mixer1, 0, i2s2, 0);
-AudioConnection          patchCord10(mixer2, 0, i2s2, 1);
+AudioConnection          patchCord5(playSdWav2, 0, fade3, 0);
+AudioConnection          patchCord6(playSdWav2, 1, fade4, 0);
+AudioConnection          patchCord7(playSdWav3, 0, mixer1, 2);
+AudioConnection          patchCord8(playSdWav3, 1, mixer2, 2);
+AudioConnection          patchCord9(fade3, 0, mixer1, 1);
+AudioConnection          patchCord10(fade4, 0, mixer2, 1);
+AudioConnection          patchCord11(fade2, 0, mixer2, 0);
+AudioConnection          patchCord12(fade1, 0, mixer1, 0);
+AudioConnection          patchCord13(mixer1, 0, i2s2, 0);
+AudioConnection          patchCord14(mixer2, 0, i2s2, 1);
 AudioControlSGTL5000     sgtl5000_1;     //xy=651,1204
 // GUItool: end automatically generated code
 
@@ -79,29 +88,26 @@ class Point {
   public:
     float x;
     float y;
-    /*float x1;
-    float x2;
-    float y1;
-    float y2;*/
     float rayon;
+    float hyst;
     const char* filename;
+    bool isTrigger;
+    bool looping;
 
     /*
      * rayon in meters
      * y = latitude
      * x = longitude
      */
-    Point(float y, float x, float rayon, const char* filename) {
+    Point(float y, float x, float rayon, float hyst, const char* filename, bool isTrigger, bool looping) {
       this->rayon = rayon;
+      this-> hyst = hyst;
       this->x = x;
       this->y = y;
       this->filename = filename;
-      /*this->x1 = x-(rayon/(111111*cos(y))); //!! radians
-      this->x2 = x+(rayon/(111111*cos(y)));
-      this->y1 = y-(rayon/111111);
-      this->y2 = y+(rayon/111111);*/
+      this->isTrigger = isTrigger;
+      this->looping = looping;
     }
-
 };
 
 
@@ -177,6 +183,16 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(BTN_1), myInterrupt, RISING);
   attachInterrupt(digitalPinToInterrupt(BTN_2), myInterrupt, RISING);
   attachInterrupt(digitalPinToInterrupt(BTN_3), myInterrupt, RISING);
+
+
+  //Test Plages de Baud
+  addPoints();
+
+  //Startup
+  playSdWav3.play("06 BOUCLE TRANSITION GUITARE ENFANTS CALE.WAV");
+  delay(2500);
+  playSdWav3.stop();
+  delay(10);
 }
 
 
@@ -217,6 +233,159 @@ void loop()
 }
 
 
+//Point(float y, float x, float rayon, float hyst, const char* filename, bool isTrigger, bool looping)
+void addPoints(void){
+  
+  Point *point1 = new Point(48.111216058669335,  -1.6461818402264587, 10, 0, "01 DEBUT YOURNENAR.WAV", false, false);
+  listePoints.add(point1);
+
+  Point *point2 = new Point(48.110068, -1.652422, 10, 0, "02 BOUCLE TRANSITION MUSICALE YOURNENAR-VERTUGADIN.WAV", true, true);
+  listePoints.add(point2);
+
+  Point *point3 = new Point(48.110091041227626, -1.6522863928835734, 10, 0, "03 VERTUGADIN PASSERELLE.WAV", false, false);
+  listePoints.add(point3);
+
+  Point *point4 = new Point(48.10927072930142, -1.6527283832604704, 10, 0, "04 BOUCLE TRANSITION AMBIANCE PASSERELLE ENFANTS.WAV", true, true);
+  listePoints.add(point4);
+
+  Point *point5 = new Point(48.109171, -1.651403, 10, 0, "05 ENFANTS INDICATIONS POUR CALE.WAV", false, false);
+  listePoints.add(point5);
+
+  Point *point6 = new Point(48.108619, -1.650568, 10, 0, "06 BOUCLE TRANSITION GUITARE ENFANTS CALE.WAV", true, false);
+  listePoints.add(point6);
+}
+
+
+
+
+//Main function that checks all points
+void checkPosition(void){
+  if(listePoints.size()>0){
+    Point *actualPoint;
+    float distance;
+
+    for(int i=0; i<listePoints.size(); i++){
+      actualPoint = listePoints.get(i);
+      distance = distanceToPoint(actualPoint);
+
+      //Check if in zone
+      if(distance < actualPoint->rayon){
+
+        //If it is a "main" point
+        if (actualPoint->looping == false) {
+          if(playSdWav1.isPlaying() == false){
+            if(LOG){
+              Serial.print("Start playing - ");
+              Serial.println(actualPoint->filename);
+            }
+            
+            playingPoint = i;
+  
+            const char* joue = actualPoint->filename;
+            playSdWav1.play(joue);
+            delay(10); // wait for library to parse WAV info
+          }
+          else{
+            if(playingPoint!=i){
+              fade1.fadeOut(1000);
+              fade2.fadeOut(1000);
+              delay(1000);
+              
+              playingPoint = i;
+  
+              const char* joue = actualPoint->filename;
+              playSdWav1.play(joue);
+              delay(10); // wait for library to parse WAV info
+
+              fade1.fadeIn(1);
+              fade2.fadeIn(1);
+            }
+          }    
+        }
+
+        //If it is a loop
+        else{
+          if(playSdWav2.isPlaying() == false){
+            if(LOG){
+              Serial.print("Start playing - ");
+              Serial.println(actualPoint->filename);
+            }
+            playingLoop = i;
+  
+            const char* joue = actualPoint->filename;
+            playSdWav2.play(joue);
+            delay(10); // wait for library to parse WAV info
+          }
+          else{
+            if(playingLoop!=i){
+              fade3.fadeOut(1000);
+              fade4.fadeOut(1000);
+              delay(1000);
+              
+              playingLoop = i;
+  
+              const char* joue = actualPoint->filename;
+              playSdWav2.play(joue);
+              delay(10); // wait for library to parse WAV info
+
+              fade3.fadeIn(1);
+              fade4.fadeIn(1);
+            }
+          }
+        }
+
+        if(LOG){
+          Serial.print("Distance to point : ");
+          Serial.println(distanceToPoint(actualPoint));
+        }
+      }
+
+      //If not in zone
+      else if(distance > (actualPoint->rayon+actualPoint->hyst)){
+        //Looping
+        if(playingLoop==i && playSdWav2.isPlaying()==false){
+          const char* joue = actualPoint->filename;
+          playSdWav2.play(joue);
+          delay(10); // wait for library to parse WAV info
+        }
+        //Stop main
+        if(playingPoint==i && playSdWav1.isPlaying()==true && actualPoint->isTrigger==false){
+          if(LOG){
+            Serial.print("Stop playing - ");
+            Serial.println(actualPoint->filename);
+          }
+          fade1.fadeOut(1000);
+          fade2.fadeOut(1000);
+          delay(1000);
+  
+          playSdWav1.stop();
+          fade1.fadeIn(1);
+          fade2.fadeIn(1);
+        }
+      }
+    }
+  }    
+}
+
+
+
+/*
+ * returns value in meters
+ */
+float distanceToPoint(Point* p){
+  //111 111 m in the y direction = 1° of latitude
+  //111,111 * cos(latitude) m in the x direction = 1° of longitude
+
+  //conversion to meters
+  float disty = (latitude - p->y)*111111;
+  float distx = (longitude - p->x)*111111*cos((p->y*6.28)/360); //!! radians
+
+  float dist = sqrt(sq(distx) + sq(disty));
+  
+  return(dist);
+}
+
+
 
 void verifBouton(void){
   
@@ -227,7 +396,7 @@ void verifBouton(void){
   //Bouton principal
   if(pressedBtns[0]==HIGH){
 
-    btnAction = true;
+    //btnAction = true;
   }
 
   //Volume -
@@ -270,7 +439,7 @@ void newZone(void){
   if (gps.location.isValid()){
 
     //Add a new point
-    Point *point1 = new Point(latitude, longitude, 10, "HELLO.WAV");
+    Point *point1 = new Point(latitude, longitude, 10, 0, "HELLO.WAV", false, false);
     listePoints.add(point1);
 
     //Point successful added
@@ -290,60 +459,6 @@ void newZone(void){
     delay(10); // wait for library to parse WAV info
     Serial.println("Hors de portée GPS");
   }
-}
-
-
-
-void checkPosition(void){
-  if(listePoints.size()>0){
-    Point *actualPoint;
-
-    //int i = 0;
-    //for(int i=0; i<listePoints.size(); i++){
-      actualPoint = listePoints.get(listePoints.size()-1);
-    
-      /*square*/
-      //if(latitude>actualPoint->y1 && latitude<actualPoint->y2 && longitude>actualPoint->x1 && longitude<actualPoint->x2){
-      /*circle*/
-      if(distanceToPoint(actualPoint) < actualPoint->rayon){
-        if (playSdWav1.isPlaying() == false) {
-          Serial.println("Start playing");
-
-          const char* joue = actualPoint->filename;
-          playSdWav1.play(joue);
-          delay(10); // wait for library to parse WAV info
-    
-          playSdWav3.play("ENTREEZONE.WAV");
-          delay(10); // wait for library to parse WAV info
-        }
-      }
-      else{
-        if (playSdWav1.isPlaying() == true){
-          Serial.println("Stop playing");
-          playSdWav1.stop();
-    
-          playSdWav3.play("SORTIEZONE.WAV");
-          delay(10); // wait for library to parse WAV info
-        }
-      }
-    //}
-    }    
-}
-
-
-
-/*
- * returns value in meters
- */
-float distanceToPoint(Point* p){
-  //111 111 m in the y direction = 1° of latitude
-  //111,111 * cos(latitude) m in the x direction = 1° of longitude
-
-  //conversion to meters
-  float disty = (latitude - p->y)*111111;
-  float distx = (longitude - p->x)*111111*cos((p->y*6.28)/360); //!! radians
-  
-  return(sqrt(sq(distx) + sq(disty)));
 }
 
 
