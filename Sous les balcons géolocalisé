@@ -286,8 +286,8 @@ void checkPosition(void){
       //Check if in zone
       if(distance < actualPoint->rayon){
 
-        //If player is not playing
-        if(playSdWav1.isPlaying() == false){
+        //If player is not playing (should happen only at the beginning)
+        if(playSdWav1.isPlaying() == false && playingPoint!=i){
           if(LOG){
             Serial.print("Start playing - ");
             Serial.println(actualPoint->filename);
@@ -299,26 +299,26 @@ void checkPosition(void){
           playSdWav1.play(joue);
           delay(10); // wait for library to parse WAV info
         }
-        else{
-          if(playingPoint!=i){
-            fade1.fadeOut(1000);
-            fade2.fadeOut(1000);
-            delay(1000);
-            
-            playingPoint = i;
+        
+        //If playing, fade out before playing
+        else if(playingPoint!=i){
+          fade1.fadeOut(1000);
+          fade2.fadeOut(1000);
+          delay(1000);
+          
+          playingPoint = i;
 
-            const char* joue = actualPoint->filename;
-            playSdWav1.play(joue);
-            delay(10); // wait for library to parse WAV info
+          const char* joue = actualPoint->filename;
+          playSdWav1.play(joue);
+          delay(10); // wait for library to parse WAV info
 
-            fade1.fadeIn(1);
-            fade2.fadeIn(1);
-          }
+          fade1.fadeIn(1);
+          fade2.fadeIn(1);
         }
       }
 
       //If main stopped, start looping
-      if(playingPoint==i && playSdWav1.isPlaying()==false && actualPoint->isLoopTrigger==true){
+      if(playSdWav1.isPlaying()==false && playingPoint==i && actualPoint->isLoopTrigger==true){
         if(LOG){
           Serial.print("Start loop - ");
           Serial.println(actualPoint->looping);
@@ -326,7 +326,7 @@ void checkPosition(void){
         
         const char* joue = actualPoint->looping;
         playSdWav1.play(joue);
-        //delay(10); // wait for library to parse WAV info
+        delay(10); // wait for library to parse WAV info
       }
     }
   }    
