@@ -14,13 +14,34 @@
 #include <SerialFlash.h>
 #include <LinkedList.h>
 #include <ArduinoJson.h>
+#include <play_wav.h>
+
 
 #include "zoneClass.h"
-#include "deserialisation.h"
-#include "gpsParse.h"
+/*#include "deserialisation.h"
+#include "gpsParse.h"*/
+
+
 
 //Useful flags
 #define LOG 1
+#define LOGGPS 1
+
+//List of all created points
+LinkedList<Point*> listePoints = LinkedList<Point*>();
+
+File myFile;
+
+// Communication GPS
+int RXPin = 0;
+int TXPin = 1;
+int GPSBaud = 9600;
+// Create a TinyGPS++ object
+TinyGPSPlus gps;
+// Create a software serial port called "gpsSerial"
+SoftwareSerial gpsSerial(RXPin, TXPin);
+//Actual data
+float latitude = 0, longitude = 0;
 
 
 //Define Audio Shield
@@ -140,10 +161,10 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(BTN_3), myInterrupt, RISING);
 
 
-  //Test Plages de Baud
-  addPoints();
+  //Reads 'info.json' file
+  readFile();
 
-  //Startup
+  //Startup sound
   playSdWav3.play("06 BOUCLE TRANSITION GUITARE ENFANTS CALE.WAV");
   delay(2500);
   playSdWav3.stop();
@@ -183,12 +204,6 @@ void loop()
     Serial.println("No GPS module detected");
     while(true);
   }
-}
-
-
-//Point(float y, float x, float rayon, float hyst, const char* filename, bool isLoopTrigger, const char* looping)
-void addPoints(void){
- readFile();
 }
 
 
