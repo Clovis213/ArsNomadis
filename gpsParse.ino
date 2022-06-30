@@ -1,16 +1,4 @@
-// Communication GPS
-int RXPin = 0;
-int TXPin = 1;
-int GPSBaud = 9600;
-// Create a TinyGPS++ object
-TinyGPSPlus gps;
-// Create a software serial port called "gpsSerial"
-SoftwareSerial gpsSerial(RXPin, TXPin);
-//Actual data
-float latitude = 0, longitude = 0;
-
-#define LOGGPS 1
-
+//Function for parsing of incoming GPS data
 void displayInfo(void)
 {
   if (gps.location.isValid())
