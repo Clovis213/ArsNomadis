@@ -1,8 +1,7 @@
 // size_t inputLength; (optional)
 
-File myFile;
 
-//Opens and reads json file
+//Opens and reads info.json file
 void readFile(void){
   myFile = SD.open("info.json");
   char input[8192];
@@ -42,10 +41,14 @@ void readFile(void){
   double initialLocation_1 = doc["initialLocation"][1]; // -1.651773
   
   JsonArray zones = doc["zones"];
-  
+
+  if(LOG){
+    Serial.println("Size of zone list :");
+    Serial.println(zones.size());
+  }
   
   //Scanning of all created zones
-  for(int i; i<sizeof(zones)/sizeof(zones[0]); i++){
+  for(int i = 0; i<zones.size(); i++){
     JsonObject zone = zones[i];
     
     const char* zone_uuid = zone["uuid"]; // "45b435f5-d4c1-44da-ba84-24c2fe0873fb"
@@ -57,10 +60,19 @@ void readFile(void){
     int zone_radius = zone["radius"]; // 25
     bool zone_visible = zone["visible"]; // true
 
-    //Scanning of the number of sounds in one zone
-    int nbSounds = sizeof(zone["sounds"])/sizeof(zone["sounds"][0]);
-  
-    JsonObject zone_sounds[nbSounds] = zone["sounds"];
+    JsonArray zone_sounds = zone["sounds"];
+    int nbSounds = zone_sounds.size();
+
+    if(LOG){
+      Serial.println("");
+      Serial.print("Zone : ");
+      Serial.println(i);
+      Serial.println(zone_uuid);
+      Serial.println(zone_name);
+      Serial.println(zone_location_0, 6);
+      Serial.println(zone_location_1, 6);
+      Serial.println(nbSounds);
+    }
 
     const char* zone_sound_uuid[nbSounds];
     const char* zone_sound_filename[nbSounds];
@@ -72,8 +84,8 @@ void readFile(void){
     bool zone_sound_loop[nbSounds];
 
 
-    //for (JsonObject zone_sound : zone["sounds"].as<JsonArray>()) {
-    for(int j; j<sizeof(zone_sounds)/sizeof(zone_sounds[0]); j++){
+    //Scans through all the sounds in this zone
+    for(int j=0; j<nbSounds; j++){
       JsonObject zone_sound = zone_sounds[j];
       
       zone_sound_uuid[j] = zone_sound["uuid"]; // "346dab4a-c45d-41c6-a3f1-8c74e8b5d858", ...
@@ -84,9 +96,15 @@ void readFile(void){
       zone_sound_fadein[j] = zone_sound["fadein"]; // 0, 0
       zone_sound_fadeout[j] = zone_sound["fadeout"]; // 0, 1
       zone_sound_loop[j] = zone_sound["loop"]; // false, true
+
+      if(LOG){
+        Serial.println("Sound information :");
+        Serial.println(zone_sound_filename[j]);
+      }
     }
 
-    if(nbSounds==1){
+    
+    if(zone_sounds.size()==1){
       Point *point1 = new Point(zone_location_0, zone_location_1, zone_radius, 0, zone_sound_filename[0], false, "");
       listePoints.add(point1);
     }
